@@ -2,6 +2,7 @@
 
 from copy import copy
 from copy import deepcopy
+from queue import PriorityQueue
 
 BOARD_WIDTH = 6
 BOARD_HEIGHT = 7
@@ -14,6 +15,9 @@ class Board:
         self.boardState = [["."] * BOARD_WIDTH for i in range(BOARD_HEIGHT)]
         self.moveList = []
         self.parent = None
+
+    def priorityWeight(self):
+        return len(self.moveList)
 
     def __copy__(self):
         newBoard = Board()
@@ -29,6 +33,9 @@ class Board:
 
     def __eq__(self, other):
         return self.boardState == other.boardState
+
+    def __lt__(self, other):
+        return self.priorityWeight() < other.priorityWeight()
 
     def stringify(self):
         return "{}\n{}".format(",".join(self.moveList), self.boardString())
@@ -107,14 +114,15 @@ goalCar = 'R'
 placeCar(board, 1, 2, 'R', 2, True)
 placeCar(board, 3, 0, 'A', 3, False)
 
-unprocessedBoards = [board]
+unprocessedBoards = PriorityQueue()
+unprocessedBoards.put((board.priorityWeight(), board))
 visitedBoards = []
 solution = None
 
 # perform BFS to explore board states until the solution is found
-while len(unprocessedBoards) > 0:
+while not unprocessedBoards.empty():
     # pop a task off the queue
-    exploreBoard = unprocessedBoards.pop()
+    exploreBoard = unprocessedBoards.get()[1]
 
     # 
     if exploreBoard.isSolved(goalCar):
@@ -128,9 +136,10 @@ while len(unprocessedBoards) > 0:
 
     adjancentBoards = performMoves(exploreBoard)
     for adjancentBoard in adjancentBoards:
-        if (adjancentBoard in visitedBoards) or (adjancentBoard in unprocessedBoards):
+        if (adjancentBoard in visitedBoards): # or (adjancentBoard in unprocessedBoards):
             continue
-        unprocessedBoards.append(adjancentBoard)
+
+        unprocessedBoards.put((adjancentBoard.priorityWeight(), adjancentBoard))
 
 
 if solution is not None:
