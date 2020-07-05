@@ -9,6 +9,10 @@ BOARD_HEIGHT = 7
 
 EMPTY = "."
 
+"""
+Represents a unique board state
+Overloads certain python operators for this object to work within common python colletions
+"""
 class Board:
 
     def __init__(self):
@@ -43,6 +47,10 @@ class Board:
     def boardString(self):
         return "\n".join(["".join(x) for x in self.boardState])
 
+"""
+Accepts a board state and attempts to find all possible boards that can be transitioned to.
+Currently, this only checks one cell moves.
+"""
 def performMoves(board):
     carsChecked = []
     newBoards = []
@@ -51,12 +59,14 @@ def performMoves(board):
             carName = board.boardState[j][i]
             if carName is not EMPTY and carName not in carsChecked:
                 carsChecked += carName
-                carRearCoord = (i, j)
-                carFrontCoord = None
-                backCoord = None
-                forwardCoord = None
+                carRearCoord = (i, j) # the back coordinate of the car
+                carFrontCoord = None # the front coordinate of the car
+                backCoord = None # the immediate coordinate behind the car
+                forwardCoord = None # the immediate coordinate in front the car
                 forwardMoveName = ""
                 backMoveName = ""
+
+                # if the car is defined to move horizontally
                 if carMovesHorizontally(carName):
                     forwardCoord = (i + carLength(carName), j)
                     carFrontCoord = (i + carLength(carName) - 1, j)
@@ -70,6 +80,7 @@ def performMoves(board):
                     forwardMoveName = "Down"
                     backMoveName = "Up"
 
+                # if there is space in front of the car that is not occupied nor off the board
                 if forwardCoord[0] in range(BOARD_WIDTH) and forwardCoord[1] in range(BOARD_HEIGHT) and board.boardState[forwardCoord[1]][forwardCoord[0]] == EMPTY:
                     newBoard = copy(board)
                     newBoard.boardState[forwardCoord[1]][forwardCoord[0]] = carName # move the car into the new cell
@@ -78,6 +89,7 @@ def performMoves(board):
                     newBoard.parent = board
                     newBoards.append(newBoard)
 
+                # if there is space in behind of the car that is not occupied nor off the board
                 if backCoord[0] in range(BOARD_WIDTH) and backCoord[1] in range(BOARD_HEIGHT) and board.boardState[backCoord[1]][backCoord[0]] == EMPTY:
                     newBoard = copy(board)
                     newBoard.boardState[backCoord[1]][backCoord[0]] = carName # move the car into the new cell
@@ -94,6 +106,9 @@ def carMovesHorizontally(carName):
 def carLength(carName):
     return car_length[carName]
 
+"""
+A helper method that ensures all needed data is placed in the correct data structures for future reference
+"""
 def placeCar(board, x, y, carName, length, movesHorizontally):
     if movesHorizontally:
         for dx in range(length):
@@ -105,69 +120,83 @@ def placeCar(board, x, y, carName, length, movesHorizontally):
     car_movement[carName] = movesHorizontally
     car_length[carName] = length
 
-car_movement = {}
-car_length = {}
+def solve(initialBoard):
 
-board = Board()
+    # create a priority queue
+    unprocessedBoards = PriorityQueue()
+    # add the initial state
+    unprocessedBoards.put((initialBoard.priorityWeight(), initialBoard))
 
-goalCar = 'R'
-placeCar(board, 1, 2, 'R', 2, True)
-placeCar(board, 3, 0, 'A', 3, False)
+    # create a list for storing the visited boards
+    visitedBoards = []
 
-unprocessedBoards = PriorityQueue()
-unprocessedBoards.put((board.priorityWeight(), board))
-visitedBoards = []
-solution = None
+    # perform BFS to explore board states until the solution is found
+    while not unprocessedBoards.empty():
+        # pop a task off the queue
+        exploreBoard = unprocessedBoards.get()[1]
 
-# perform BFS to explore board states until the solution is found
-while not unprocessedBoards.empty():
-    # pop a task off the queue
-    exploreBoard = unprocessedBoards.get()[1]
+        # if the board demonstrates a solved position
+        if exploreBoard.isSolved(goalCar):
+            return exploreBoard # return it immedaitely. we have found a solution
 
-    # 
-    if exploreBoard.isSolved(goalCar):
-        solution = exploreBoard
-        break
-
-    if exploreBoard in visitedBoards:
-        continue
-
-    visitedBoards.append(exploreBoard)
-
-    adjancentBoards = performMoves(exploreBoard)
-    for adjancentBoard in adjancentBoards:
-        if (adjancentBoard in visitedBoards): # or (adjancentBoard in unprocessedBoards):
+        # if the board has already been processed then move onto the next board state in the queue
+        if exploreBoard in visitedBoards:
             continue
+        
+        # mark the board as visited
+        visitedBoards.append(exploreBoard)
 
-        unprocessedBoards.put((adjancentBoard.priorityWeight(), adjancentBoard))
+        # calculate all boards that can be reached from the current board
+        adjancentBoards = performMoves(exploreBoard)
+        for adjancentBoard in adjancentBoards:
+            # if we have already visited and processed a board then we do not need to add it again
+            if (adjancentBoard in visitedBoards): # or (adjancentBoard in unprocessedBoards):
+                continue
 
+            # otherwise, we need to process this adjacent state. add it to the queue
+            unprocessedBoards.put((adjancentBoard.priorityWeight(), adjancentBoard))
 
-if solution is not None:
+    return None 
 
-    final_solution = []
-    while solution is not None:
-        final_solution.append(solution)
-        solution = solution.parent
+def printSolution(initialBoard, solution):
+    if solution is not None:
 
-    final_solution.reverse()
-    print("=== Start ")
-    print(final_solution[0].boardString())
+        final_solution = []
+        while solution is not None:
+            final_solution.append(solution)
+            solution = solution.parent
 
-    for step in final_solution:
-        if len(step.moveList) > 0:
-            print(">>> Move {}".format(step.moveList[-1]))
-            print()
-        if step.isSolved(goalCar):
-            print("=== Solved !!!")
-            print(step.boardString())
-        else:
-            print("=== Current board")
-            print(step.boardString())
+        final_solution.reverse()
+        print("=== Start ")
+        print(final_solution[0].boardString())
 
-    print("=== All Moves ===")
-    for move in final_solution[-1].moveList:
-        print(move)
+        for step in final_solution:
+            if len(step.moveList) > 0:
+                print(">>> Move {}".format(step.moveList[-1]))
+                print()
+            if step.isSolved(goalCar):
+                print("=== Solved !!!")
+                print(step.boardString())
+            else:
+                print("=== Current board")
+                print(step.boardString())
 
-else:
-    print("There is no solution for the board")
-    print(board.boardString())
+        print("=== All Moves ===")
+        for move in final_solution[-1].moveList:
+            print(move)
+
+    else:
+        print("There is no solution for the board")
+        print(initialBoard.boardString())
+
+car_movement = {}  # mapping of car names to whether they move horizontally or not
+car_length = {}  # mapping of car names to the size of the car
+
+initialBoard = Board()
+goalCar = 'R'
+placeCar(initialBoard, 1, 2, 'R', 2, True)
+placeCar(initialBoard, 3, 0, 'A', 3, False)
+placeCar(initialBoard, 3, 3, 'B', 3, True)
+
+solution = solve(initialBoard)
+printSolution(initialBoard, solution)
