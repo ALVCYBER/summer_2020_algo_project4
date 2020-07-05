@@ -122,6 +122,11 @@ def placeCar(board, x, y, carName, length, movesHorizontally):
 
 def solve(initialBoard):
 
+    measurements = {
+        "processed": 0,
+        "seen": 1 # starts at one since there is the initial board
+    }
+
     # create a priority queue
     unprocessedBoards = PriorityQueue()
     # add the initial state
@@ -134,10 +139,11 @@ def solve(initialBoard):
     while not unprocessedBoards.empty():
         # pop a task off the queue
         exploreBoard = unprocessedBoards.get()[1]
+        measurements["processed"] += 1
 
         # if the board demonstrates a solved position
         if exploreBoard.isSolved(goalCar):
-            return exploreBoard # return it immedaitely. we have found a solution
+            return (exploreBoard, measurements) # return it immedaitely. we have found a solution
 
         # if the board has already been processed then move onto the next board state in the queue
         if exploreBoard in visitedBoards:
@@ -155,8 +161,9 @@ def solve(initialBoard):
 
             # otherwise, we need to process this adjacent state. add it to the queue
             unprocessedBoards.put((adjancentBoard.priorityWeight(), adjancentBoard))
+            measurements["seen"] += 1
 
-    return None 
+    return (None, measurements) 
 
 def printSolution(initialBoard, solution):
     if solution is not None:
@@ -189,14 +196,46 @@ def printSolution(initialBoard, solution):
         print("There is no solution for the board")
         print(initialBoard.boardString())
 
+
 car_movement = {}  # mapping of car names to whether they move horizontally or not
 car_length = {}  # mapping of car names to the size of the car
 
+"""
+...A..
+...A..
+.RRA..
+...BBB
+......
+......
+......
+"""
+# initialBoard = Board()
+# goalCar = 'R'
+# placeCar(initialBoard, 1, 2, 'R', 2, True)
+# placeCar(initialBoard, 3, 0, 'A', 3, False)
+# placeCar(initialBoard, 3, 3, 'B', 3, True)
+
+
+"""
+...A..
+...A.D
+.RRA.D
+..EBBB
+..E..C
+.FF..C
+.....C
+"""
 initialBoard = Board()
 goalCar = 'R'
 placeCar(initialBoard, 1, 2, 'R', 2, True)
 placeCar(initialBoard, 3, 0, 'A', 3, False)
 placeCar(initialBoard, 3, 3, 'B', 3, True)
+placeCar(initialBoard, 5, 4, 'C', 3, False)
+placeCar(initialBoard, 5, 1, 'D', 2, False)
+placeCar(initialBoard, 2, 3, 'E', 2, False)
+placeCar(initialBoard, 1, 5, 'F', 2, True)
 
-solution = solve(initialBoard)
+(solution, measurements) = solve(initialBoard)
 printSolution(initialBoard, solution)
+
+print(measurements)
